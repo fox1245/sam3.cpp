@@ -3282,6 +3282,18 @@ std::shared_ptr<sam3_model> sam3_load_model(const sam3_params& params) {
         model->backend = ggml_backend_metal_init();
     }
 #endif
+    // rakuko-forge 패치: 일반 GPU 백엔드(HIP/CUDA/Vulkan) — ggml 디바이스 레지스트리 경유.
+    // 업스트림은 Metal 만 GPU 지원하나, ROCm/gfx1201(R9700) 가속을 위해 레지스트리로 GPU 디바이스를
+    // 잡는다. 미발견/실패 시 아래 CPU 폴백.
+    if (params.use_gpu && !model->backend) {
+        ggml_backend_dev_t dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_GPU);
+        if (dev) {
+            model->backend = ggml_backend_dev_init(dev, nullptr);
+            if (model->backend) {
+                fprintf(stderr, "%s: using %s GPU backend\n", __func__, ggml_backend_dev_name(dev));
+            }
+        }
+    }
     if (!model->backend) {
         fprintf(stderr, "%s: using CPU backend\n", __func__);
         model->backend = ggml_backend_cpu_init();

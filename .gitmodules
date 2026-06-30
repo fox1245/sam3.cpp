@@ -1,3 +1,4 @@
 [submodule "ggml"]
 	path = ggml
-	url = https://github.com/PABannier/ggml.git
+	url = https://github.com/fox1245/ggml.git
+	branch = feat/win-part-cuda

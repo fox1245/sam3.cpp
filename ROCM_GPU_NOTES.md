@@ -19,7 +19,17 @@ GGML_ASSERT(ok) failed  (ggml-cuda.cu)
   ggml-cuda(HIP 포함) 에는 없음. SAM3 ViT(`sam3_build_vit_graph` → `sam3_vit_block_forward`)의 4개 호출
   (sam3.cpp:3744/3799, 6850/6862)이 유일한 미지원 op. 다른 그래프(디코더/프롬프트/마스크)는 GPU OK.
 
-## 해결 옵션 (둘 중 하나)
+## 진행 상황 (2026-07-01)
+
+- ✅ **WIN_PART/WIN_UNPART CUDA 커널 구현 완료** — ggml 포크(fox1245/ggml `feat/win-part-cuda`)에
+  추가. ggml 서브모듈을 이 포크로 재지정. **실측: SAM3 ViT 인코더 graph compute CPU 44s → GPU 1.84s.**
+- ⚠️ **다음 갭: FLASH_ATTN_EXT** — WIN_PART 통과 후 `ggml_cuda_flash_attn_ext`(fattn.cu)가 gfx1201
+  에서 `BEST_FATTN_KERNEL_NONE` → abort. ggml 의 CUDA flash-attention 이 RDNA4(gfx1201) 헤드구성에
+  적합 커널이 없음. sam3 ViT 어텐션 4곳(sam3.cpp:3790/4010/4411/5490)이 `ggml_flash_attn_ext` 사용.
+  → **이걸 풀어야 SAM3 가 완전 GPU.** 옵션: (A) ggml-cuda FA 를 gfx1201 에 맞게(어려움) (B) 비-FA
+  어텐션 경로(softmax(QKᵀ)V, 지원 op) 추가 (C) **인코더만 backend_sched(GPU+CPU) → FA 만 CPU 폴백**(권장).
+
+## (구) 해결 옵션 — WIN_PART 용 (참고)
 
 ### A) ggml-cuda 에 WIN_PART/WIN_UNPART 커널 추가 — **권장(근본·PR가능)**
 CPU forward(`ggml-cpu/ops.cpp: ggml_compute_forward_win_part_f32`)는 단순 패딩-윈도우 재배치라
